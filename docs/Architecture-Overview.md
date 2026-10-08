@@ -1,11 +1,9 @@
-# AIPMO Architecture v1.3
+# AIPMO Architecture v1.4
 
 GANTT-AX v7.3 project JSON → authenticated FastAPI import → validation/normalization → PostgreSQL JSONB STAGED snapshot → authenticated original JSON export.
 
-Deterministic progress and EVM endpoints remain. Imported data never automatically becomes an approved baseline.
+Deterministic progress/EVM and new DAG-based CPM schedule API (/api/v1/schedule/cpm). CPM currently supports FS zero-lag dependencies with elapsed-day durations; not yet full GANTT-AX working-calendar semantics.
 
-## Validation
-CI executes unit tests, authenticated API tests, and a real PostgreSQL roundtrip against a disposable GitHub Actions service database. Review actual CI status before merging.
+CI covers unit, API and disposable PostgreSQL integration tests. Source imports never become approved baselines automatically.
 
-## Planned
-Full source JSON compatibility; Excel mapping; migration framework; MCP GitHub/Plane; RBAC and approval; AX QE OS; SPA.
+Planned: full dependency types, calendars, Excel mapping, MCP GitHub/Plane, RBAC, approvals, AX QE OS and SPA.
