@@ -3,8 +3,9 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from app.engine import progress, evm
+from app.schedule import critical_path
 
-app = FastAPI(title="AI PMO Starter API", version="1.2.0")
+app = FastAPI(title="AI PMO Starter API", version="1.4.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -15,6 +16,12 @@ class EVMRequest(BaseModel):
     ev: float = Field(ge=0)
     ac: float = Field(ge=0)
     bac: float = Field(ge=0)
+class ScheduleTask(BaseModel):
+    id: str = Field(min_length=1)
+    duration: float = Field(ge=0)
+    predecessors: list[str] = Field(default_factory=list)
+class ScheduleRequest(BaseModel):
+    tasks: list[ScheduleTask]
 @app.get("/health")
 def health(): return {"status":"ok"}
 def require_key(key):
@@ -41,3 +48,8 @@ def export_ganttax(import_id:str,x_api_key:str|None=Header(default=None)):
     data=export_import(import_id)
     if data is None: raise HTTPException(404,"import not found")
     return data
+@app.post("/api/v1/schedule/cpm")
+def calculate_cpm(data:ScheduleRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try: return critical_path([t.model_dump() for t in data.tasks])
+    except ValueError as exc: raise HTTPException(422,str(exc))
