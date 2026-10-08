@@ -5,7 +5,7 @@ def by_id(result,task_id):
     return next(t for t in result["tasks"] if t["id"]==task_id)
 
 @pytest.mark.parametrize("kind,expected",[
-    ("FS",7),("SS",4),("FF",5),("SF",2)])
+    ("FS",7),("SS",3),("FF",4),("SF",3)])
 def test_dependency_types(kind,expected):
     result=critical_path([{"id":"A","duration":4},{"id":"B","duration":3,
        "predecessors":[{"id":"A","type":kind,"lag":0}]}])
