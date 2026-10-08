@@ -7,3 +7,7 @@ Deterministic progress/EVM and new DAG-based CPM schedule API (/api/v1/schedule/
 CI covers unit, API and disposable PostgreSQL integration tests. Source imports never become approved baselines automatically.
 
 Planned: full dependency types, calendars, Excel mapping, MCP GitHub/Plane, RBAC, approvals, AX QE OS and SPA.
+
+
+## v1.5 dependency extension
+CPM supports FS, SS, FF and SF dependencies with signed elapsed-day lag. Legacy predecessor strings remain FS with zero lag. Workday calendars and holidays are not yet supported.
