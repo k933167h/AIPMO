@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from app.engine import progress, evm
 from app.schedule import critical_path
 
-app = FastAPI(title="AI PMO Starter API", version="1.4.0")
+app = FastAPI(title="AI PMO Starter API", version="1.5.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -19,7 +19,7 @@ class EVMRequest(BaseModel):
 class ScheduleTask(BaseModel):
     id: str = Field(min_length=1)
     duration: float = Field(ge=0)
-    predecessors: list[str] = Field(default_factory=list)
+    predecessors: list[str | dict[str, Any]] = Field(default_factory=list)
 class ScheduleRequest(BaseModel):
     tasks: list[ScheduleTask]
 @app.get("/health")
