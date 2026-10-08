@@ -1,9 +1,7 @@
-# AIPMO Architecture v1.1 — GANTT-AX integration
+# AIPMO Architecture v1.2
 
-FastAPI calculation engine → GANTT-AX v7.3 read-only normalization → future staging database → MCP adapters → approval-gated writes.
+GANTT-AX v7.3 project JSON → authenticated FastAPI import → validation/normalization → PostgreSQL JSONB STAGED snapshot → authenticated original JSON export.
 
-The original HTML includes WBS/Gantt, EVM, VBS, FP, resource, CCPM, Monte Carlo, governance, portfolio, quality, assurance and evidence capabilities. These are **requirements/reference features**, not completed server implementations.
+Core EVM/progress deterministic API remains. The source standalone HTML is a reference application, not a real project dataset. Staged imports are not approved baselines.
 
-Imported source data ≠ approved baseline. Never replace baseline without PM approval.
-
-See [GANTT-AX Integration](GANTT-AX-v7.3-Integration.md).
+Future: schema migration framework, source-state compatibility, Excel mapping, MCP GitHub/Plane adapters, RBAC, audit evidence, AX QE OS and SPA.
