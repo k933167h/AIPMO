@@ -4,8 +4,9 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from app.engine import progress, evm
 from app.schedule import critical_path
+from app.calendar import project_schedule_dates
 
-app = FastAPI(title="AI PMO Starter API", version="1.5.0")
+app = FastAPI(title="AI PMO Starter API", version="1.6.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -22,6 +23,9 @@ class ScheduleTask(BaseModel):
     predecessors: list[str | dict[str, Any]] = Field(default_factory=list)
 class ScheduleRequest(BaseModel):
     tasks: list[ScheduleTask]
+    project_start: str | None = None
+    holidays: list[str] = Field(default_factory=list)
+    working_weekdays: list[int] = Field(default_factory=lambda: [0,1,2,3,4])
 @app.get("/health")
 def health(): return {"status":"ok"}
 def require_key(key):
@@ -51,5 +55,7 @@ def export_ganttax(import_id:str,x_api_key:str|None=Header(default=None)):
 @app.post("/api/v1/schedule/cpm")
 def calculate_cpm(data:ScheduleRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
-    try: return critical_path([t.model_dump() for t in data.tasks])
+    try:
+        result=critical_path([t.model_dump() for t in data.tasks])
+        return project_schedule_dates(result,data.project_start,data.holidays,data.working_weekdays) if data.project_start else result
     except ValueError as exc: raise HTTPException(422,str(exc))
