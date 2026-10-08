@@ -11,3 +11,7 @@ Planned: full dependency types, calendars, Excel mapping, MCP GitHub/Plane, RBAC
 
 ## v1.5 dependency extension
 CPM supports FS, SS, FF and SF dependencies with signed elapsed-day lag. Legacy predecessor strings remain FS with zero lag. Workday calendars and holidays are not yet supported.
+
+
+## v1.6 Workday calendar projection
+Optional project_start, holidays and working_weekdays add working-date boundaries to integer-unit CPM output. This is a date projection of elapsed-day CPM, not a full working-time constraint solver; noninteger boundaries are rejected. Holidays are supplied by caller.
