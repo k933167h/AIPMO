@@ -5,8 +5,9 @@ from pydantic import BaseModel, Field
 from app.engine import progress, evm
 from app.schedule import critical_path
 from app.calendar import project_schedule_dates
+from app.baseline import compare_baseline
 
-app = FastAPI(title="AI PMO Starter API", version="1.6.0")
+app = FastAPI(title="AI PMO Starter API", version="1.7.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -26,6 +27,7 @@ class ScheduleRequest(BaseModel):
     project_start: str | None = None
     holidays: list[str] = Field(default_factory=list)
     working_weekdays: list[int] = Field(default_factory=lambda: [0,1,2,3,4])
+    baseline: dict[str, Any] | None = None
 @app.get("/health")
 def health(): return {"status":"ok"}
 def require_key(key):
@@ -57,5 +59,10 @@ def calculate_cpm(data:ScheduleRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     try:
         result=critical_path([t.model_dump() for t in data.tasks])
-        return project_schedule_dates(result,data.project_start,data.holidays,data.working_weekdays) if data.project_start else result
+        if data.baseline is not None and not data.project_start:
+            raise ValueError('project_start required for baseline comparison')
+        dated=project_schedule_dates(result,data.project_start,data.holidays,data.working_weekdays) if data.project_start else result
+        if data.baseline is not None:
+            dated['baseline_variance']=compare_baseline(dated,data.baseline)
+        return dated
     except ValueError as exc: raise HTTPException(422,str(exc))
