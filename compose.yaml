@@ -1,0 +1,7 @@
+services:
+  api:
+    build: .
+    environment:
+      PMO_API_KEY: ${PMO_API_KEY:?Set PMO_API_KEY in .env}
+    ports:
+      - '127.0.0.1:8000:8000'
