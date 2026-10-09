@@ -105,3 +105,8 @@ def read_plane_pages(workspace, project_id, max_pages=3, **kwargs):
         if not batch or len(batch) < 100:
             break
     return issues
+
+def read_project_pages(jira_project, plane_workspace, plane_project, max_pages=3):
+    jira = read_jira_pages(jira_project, max_pages=max_pages)
+    plane = read_plane_pages(plane_workspace, plane_project, max_pages=max_pages)
+    return {"jira": jira, "plane": plane, "jira_count": len(jira), "plane_count": len(plane)}
