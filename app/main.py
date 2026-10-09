@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.0.0")
+app = FastAPI(title="AI PMO Starter API", version="3.1.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -280,3 +280,27 @@ def get_sync_checkpoint(provider:str,project_key:str,x_api_key:str|None=Header(d
         raise HTTPException(403,"project not authorized")
     except ValueError as exc:
         raise HTTPException(422,str(exc))
+
+from app.sync_worker import sync_provider
+
+class WorkerSyncRequest(BaseModel):
+    provider: str
+    project_key: str
+    workspace: str | None = None
+    max_pages: int = Field(default=3,ge=1,le=5)
+
+@app.post("/api/v1/sync/execute")
+def execute_project_sync(data:WorkerSyncRequest,x_api_key:str|None=Header(default=None),
+                         x_worker_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    expected=os.getenv("PMO_SYNC_WORKER_KEY")
+    if not expected or not x_worker_key or not secrets.compare_digest(expected,x_worker_key):
+        raise HTTPException(403,"worker authorization required")
+    try:
+        return sync_provider(data.provider,data.project_key,data.workspace,data.max_pages)
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except Exception:
+        raise HTTPException(502,"sync execution failed")
