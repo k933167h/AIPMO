@@ -6,8 +6,9 @@ from app.engine import progress, evm
 from app.schedule import critical_path
 from app.calendar import project_schedule_dates
 from app.baseline import compare_baseline
+from app.approvals import propose_baseline, approve_baseline, load_approved_baseline
 
-app = FastAPI(title="AI PMO Starter API", version="1.7.0")
+app = FastAPI(title="AI PMO Starter API", version="1.8.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -28,6 +29,7 @@ class ScheduleRequest(BaseModel):
     holidays: list[str] = Field(default_factory=list)
     working_weekdays: list[int] = Field(default_factory=lambda: [0,1,2,3,4])
     baseline: dict[str, Any] | None = None
+    baseline_id: str | None = None
 @app.get("/health")
 def health(): return {"status":"ok"}
 def require_key(key):
@@ -59,6 +61,12 @@ def calculate_cpm(data:ScheduleRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     try:
         result=critical_path([t.model_dump() for t in data.tasks])
+        if data.baseline_id and data.baseline is not None:
+            raise ValueError('provide baseline_id instead of baseline for persisted approval')
+        if data.baseline_id:
+            approved=load_approved_baseline(data.baseline_id)
+            if approved is None: raise HTTPException(404,'approved baseline not found')
+            data.baseline=approved
         if data.baseline is not None and not data.project_start:
             raise ValueError('project_start required for baseline comparison')
         dated=project_schedule_dates(result,data.project_start,data.holidays,data.working_weekdays) if data.project_start else result
@@ -66,3 +74,21 @@ def calculate_cpm(data:ScheduleRequest,x_api_key:str|None=Header(default=None)):
             dated['baseline_variance']=compare_baseline(dated,data.baseline)
         return dated
     except ValueError as exc: raise HTTPException(422,str(exc))
+
+class BaselineProposal(BaseModel):
+    project_code: str = Field(min_length=1)
+    baseline: dict[str,Any]
+class BaselineApproval(BaseModel):
+    reviewer: str = Field(min_length=1)
+@app.post("/api/v1/baselines",status_code=201)
+def create_baseline(data:BaselineProposal,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try: return propose_baseline(data.project_code,data.baseline)
+    except ValueError as exc: raise HTTPException(422,str(exc))
+@app.post("/api/v1/baselines/{baseline_id}/approve")
+def approve_staged_baseline(baseline_id:str,data:BaselineApproval,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try: result=approve_baseline(baseline_id,data.reviewer)
+    except ValueError as exc: raise HTTPException(422,str(exc))
+    if result is None: raise HTTPException(404,"staged baseline not found")
+    return result
