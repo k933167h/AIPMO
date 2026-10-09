@@ -53,3 +53,31 @@ def read_plane(workspace, project_id, base_url=None, token=None):
     if not isinstance(issues, list):
         raise ValueError("unexpected Plane response")
     return issues
+
+def read_jira_pages(project_key, max_pages=3, **kwargs):
+    """Read bounded Jira offset pages; stop at provider-reported total."""
+    if not 1 <= max_pages <= 5:
+        raise ValueError("max_pages must be 1..5")
+    import base64
+    base = _base_url(kwargs.get("base_url") or os.environ.get("PMO_JIRA_URL"))
+    email = kwargs.get("email") or os.environ.get("PMO_JIRA_EMAIL")
+    token = kwargs.get("token") or os.environ.get("PMO_JIRA_TOKEN")
+    if not email or not token:
+        raise ValueError("Jira credentials missing")
+    if not project_key or not project_key.replace("-", "").replace("_", "").isalnum():
+        raise ValueError("invalid Jira project key")
+    auth = base64.b64encode(f"{email}:{token}".encode()).decode()
+    headers = {"Authorization": f"Basic {auth}", "Accept": "application/json"}
+    issues = []
+    for page in range(max_pages):
+        query = urlencode({"jql": f'project = "{project_key}" ORDER BY updated DESC',
+                           "startAt": page * 100, "maxResults": 100,
+                           "fields": "summary,status,customfield_10016"})
+        data = _request_json(f"{base}/rest/api/3/search?{query}", headers)
+        batch = data.get("issues") if isinstance(data, dict) else None
+        if not isinstance(batch, list):
+            raise ValueError("unexpected Jira response")
+        issues.extend(batch)
+        if not batch or len(batch) < 100 or len(issues) >= data.get("total", float("inf")):
+            break
+    return issues
