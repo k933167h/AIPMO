@@ -1,6 +1,7 @@
 import os
 import secrets
 from typing import Any
+from datetime import datetime
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from app.engine import progress, evm
@@ -11,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.9.0")
+app = FastAPI(title="AI PMO Starter API", version="3.0.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -245,3 +246,37 @@ def read_wbs_changes(data:DeltaWBSRequest,x_api_key:str|None=Header(default=None
         raise HTTPException(422,str(exc))
     except Exception:
         raise HTTPException(502,"remote project service unavailable")
+
+from app.sync_checkpoints import read_checkpoint,record_sync
+
+class SyncRunRecord(BaseModel):
+    project_key: str
+    provider: str
+    watermark: datetime | None = None
+    observed_count: int = Field(ge=0)
+    success: bool = True
+    error_code: str | None = None
+
+@app.post("/api/v1/sync/runs")
+def save_sync_run(data:SyncRunRecord,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try:
+        check_project_access(data.project_key)
+        return record_sync(data.project_key,data.provider,data.watermark,
+                           data.observed_count,data.success,data.error_code)
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+
+@app.get("/api/v1/sync/checkpoints/{provider}/{project_key}")
+def get_sync_checkpoint(provider:str,project_key:str,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try:
+        check_project_access(project_key)
+        return {"project_key":project_key,"provider":provider,
+                "watermark":read_checkpoint(project_key,provider)}
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
