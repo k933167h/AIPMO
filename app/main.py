@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.3.0")
+app = FastAPI(title="AI PMO Starter API", version="2.4.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -141,3 +141,11 @@ class MCPAuthorizationRequest(BaseModel):
 def check_mcp_policy(data:MCPAuthorizationRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     return authorize_tool(data.tool_name,data.roles,data.approved)
+
+from app.github_collector import collect_github
+
+@app.get("/api/v1/connectors/github/{owner}/{repo}/snapshot")
+def github_project_snapshot(owner:str,repo:str,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try: return collect_github(f"{owner}/{repo}")
+    except ValueError as exc: raise HTTPException(422,str(exc))
