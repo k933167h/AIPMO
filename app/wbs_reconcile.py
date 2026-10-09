@@ -1,7 +1,7 @@
 """Normalize project tasks from Jira, Plane and GANTT-AX without mutating sources."""
 import re
 
-WBS_ID=re.compile(r"\\bWBS[-_: ]([A-Za-z0-9][A-Za-z0-9._-]{0,63})\\b",re.I)
+WBS_ID=re.compile(r"\bWBS[-_: ]([A-Za-z0-9][A-Za-z0-9._-]{0,63})\b",re.I)
 
 def _wbs(value):
     match=WBS_ID.search(str(value or ""))
