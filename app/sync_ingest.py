@@ -32,3 +32,35 @@ def prepare(provider, items):
         value=(item.get("fields") or {}).get("updated") if provider=="jira" else item.get("updated_at")
         prepared.append((str(identifier),parse_updated(value),json.dumps(item,ensure_ascii=False)))
     return prepared
+
+def persist_items(project_key,provider,items,complete=True):
+    if not project_key or not complete: raise ValueError("invalid or incomplete collection")
+    prepared=prepare(provider,items)
+    now=datetime.now(timezone.utc)
+    watermark=max((stamp for _,stamp,_ in prepared),default=None)
+    run_id=str(uuid.uuid4())
+    with get_engine().begin() as conn:
+        for statement in (SCHEMA+ITEM_SCHEMA).strip().split(";"):
+            if statement.strip(): conn.execute(text(statement))
+        for identifier,stamp,payload in prepared:
+            conn.execute(text("""INSERT INTO pmo_sync_items
+             (project_key,provider,external_id,payload,updated_at)
+             VALUES (:project,:provider,:id,CAST(:payload AS JSONB),:updated)
+             ON CONFLICT(project_key,provider,external_id)
+             DO UPDATE SET payload=EXCLUDED.payload,updated_at=EXCLUDED.updated_at
+             WHERE pmo_sync_items.updated_at<=EXCLUDED.updated_at"""),
+             {"project":project_key,"provider":provider,"id":identifier,"payload":payload,"updated":stamp})
+        conn.execute(text("""INSERT INTO pmo_sync_runs
+         (id,project_key,provider,status,observed_count,started_at,completed_at,error_code)
+         VALUES (:id,:project,:provider,'SUCCESS',:count,:at,:at,NULL)"""),
+         {"id":run_id,"project":project_key,"provider":provider,"count":len(prepared),"at":now})
+        if watermark:
+            conn.execute(text("""INSERT INTO pmo_sync_checkpoints
+             (project_key,provider,watermark,updated_at)
+             VALUES (:project,:provider,:watermark,:at)
+             ON CONFLICT(project_key,provider)
+             DO UPDATE SET watermark=GREATEST(pmo_sync_checkpoints.watermark,EXCLUDED.watermark),
+                           updated_at=EXCLUDED.updated_at"""),
+             {"project":project_key,"provider":provider,"watermark":watermark,"at":now})
+    return {"run_id":run_id,"status":"SUCCESS","stored_count":len(prepared),
+            "watermark":watermark.isoformat() if watermark else None}
