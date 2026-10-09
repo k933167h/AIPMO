@@ -79,3 +79,16 @@ def load_approved_baseline(baseline_id):
     if row is None: return None
     baseline=row if isinstance(row,dict) else json.loads(row)
     return {**baseline,"id":baseline_id,"approval_status":"APPROVED"}
+
+def reject_baseline(baseline_id,reviewer,reason):
+    if not reviewer or not reviewer.strip() or not reason or not reason.strip():
+        raise ValueError("reviewer and rejection reason required")
+    with get_engine().begin() as conn:
+        conn.execute(text(SCHEMA))
+        row=conn.execute(text("""UPDATE pmo_baselines SET approval_status='REJECTED',
+            approved_by=:reviewer WHERE id=:id AND approval_status='STAGED'
+            RETURNING id,project_code"""),{"reviewer":reviewer,"id":baseline_id}).mappings().first()
+        if row is not None: _audit(conn,baseline_id,"REJECTED",reviewer)
+    if row is None: return None
+    return {"baseline_id":row["id"],"project_code":row["project_code"],
+            "approval_status":"REJECTED","rejected_by":reviewer,"reason":reason}

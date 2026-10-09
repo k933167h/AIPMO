@@ -27,3 +27,7 @@ PostgreSQL stores baseline proposals as STAGED JSONB records. A separate endpoin
 
 ## v1.9 SME approval credential and audit
 Approval endpoint now requires PMO_SME_APPROVAL_KEY via x-sme-key in addition to PMO_API_KEY. PostgreSQL stores PROPOSED and APPROVED audit events in the same transaction as baseline changes. GET /api/v1/baselines/{id}/audit returns events. This is a shared-role secret, not user-specific RBAC, immutable/WORM storage, or independently authenticated reviewer identity; these remain production requirements.
+
+
+## v2.0 Identity-bound SME approval
+PMO_IDENTITIES_JSON maps deployment-managed credentials to user_id and roles. SME approval and rejection require both shared SME key and x-identity-token for a user with SME role. Approval reviewer must match authenticated user_id. REJECTED is terminal and recorded in audit. Identity mapping is static deployment configuration, not enterprise SSO/OIDC; rejection reason is returned but not yet durably recorded in audit.
