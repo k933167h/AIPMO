@@ -15,7 +15,7 @@ def test_zulip_delta_checkpoint(monkeypatch):
     captured=[]
     monkeypatch.setattr(worker,"check_project_access",lambda p:True)
     monkeypatch.setattr(worker,"read_cursor",lambda *args:"10")
-    monkeypatch.setattr(worker,"zulip_recent_messages",lambda *args:[
+    monkeypatch.setattr(worker,"fetch_zulip_since",lambda *args,**kwargs:[
         {"id":10,"subject":"WBS-1"},{"id":11,"subject":"WBS-2"}])
     monkeypatch.setattr(worker,"apply_batch",lambda p,v,s,items,cursor:
         captured.append((items,cursor)) or {"registered":len(items),"cursor":cursor})
