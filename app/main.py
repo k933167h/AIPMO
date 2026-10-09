@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.4.0")
+app = FastAPI(title="AI PMO Starter API", version="3.5.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -373,3 +373,32 @@ def get_artifact_links(project_id:str,wbs_id:str,limit:int=100,
         raise HTTPException(403,"project not authorized")
     except ValueError as exc:
         raise HTTPException(422,str(exc))
+
+from app.collaboration_ingest import ingest_zulip,ingest_nextcloud
+
+class CollaborationIngestRequest(BaseModel):
+    project_id: str = Field(min_length=1)
+    provider: str
+    stream_id: int | None = None
+    folder: str = ""
+
+@app.post("/api/v1/collaboration/ingest")
+def run_collaboration_ingest(data:CollaborationIngestRequest,
+                             x_api_key:str|None=Header(default=None),
+                             x_worker_key:str|None=Header(default=None)):
+    _artifact_worker_auth(x_api_key,x_worker_key)
+    try:
+        if data.provider=="zulip":
+            if data.stream_id is None: raise ValueError("stream_id required")
+            return ingest_zulip(data.project_id,data.stream_id)
+        if data.provider=="nextcloud":
+            return ingest_nextcloud(data.project_id,data.folder)
+        raise HTTPException(422,"provider ingestion unsupported")
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502,"collaboration ingestion failed")
