@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.2.0")
+app = FastAPI(title="AI PMO Starter API", version="3.4.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -330,3 +330,46 @@ def probe_collaboration(provider:str,x_api_key:str|None=Header(default=None),
         raise
     except Exception:
         raise HTTPException(502,"collaboration service unavailable")
+
+from app.artifact_store import register,list_links
+
+class ArtifactLinkRequest(BaseModel):
+    project_id: str = Field(min_length=1)
+    wbs_id: str = Field(min_length=1)
+    kind: str
+    source: str = Field(min_length=1)
+    external_id: str = Field(min_length=1)
+    url: str | None = None
+    metadata: dict[str,Any] = Field(default_factory=dict)
+
+def _artifact_worker_auth(api_key,worker_key):
+    require_key(api_key)
+    expected=os.getenv("PMO_SYNC_WORKER_KEY")
+    if not expected or not worker_key or not secrets.compare_digest(expected,worker_key):
+        raise HTTPException(403,"artifact worker authorization required")
+
+@app.post("/api/v1/artifacts/links")
+def add_artifact_link(data:ArtifactLinkRequest,x_api_key:str|None=Header(default=None),
+                      x_worker_key:str|None=Header(default=None)):
+    _artifact_worker_auth(x_api_key,x_worker_key)
+    try:
+        check_project_access(data.project_id)
+        return register(data.project_id,data.wbs_id,data.kind,data.source,
+                        data.external_id,data.url,data.metadata)
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+
+@app.get("/api/v1/artifacts/{project_id}/{wbs_id}")
+def get_artifact_links(project_id:str,wbs_id:str,limit:int=100,
+                       x_api_key:str|None=Header(default=None),
+                       x_worker_key:str|None=Header(default=None)):
+    _artifact_worker_auth(x_api_key,x_worker_key)
+    try:
+        check_project_access(project_id)
+        return {"project_id":project_id,"wbs_id":wbs_id,"links":list_links(project_id,wbs_id,limit)}
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))

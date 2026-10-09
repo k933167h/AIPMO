@@ -72,3 +72,6 @@ AIPMO -> authenticated Collaboration Probe API -> fixed server-configured Zulip/
 
 ## v3.3 Open-source capability fallback
 AIPMO uses supported official APIs first. When a community edition lacks an API, AIPMO may provide an independent artifact identity and WBS traceability service rather than using undocumented or license-restricted endpoints. app/artifact_registry.py introduces deterministic SHA-256 IDs over project, WBS, artifact kind, source and external ID. This is a pure algorithm only; durable storage, RBAC, UI, full text search and wiki editing are future milestones.
+
+## v3.4 Persistent Artifact Registry
+pmo_artifact_links stores project/WBS-scoped wiki, file, message, test, defect and task references. Stable SHA-256 identity is used for idempotent PostgreSQL upserts. POST /api/v1/artifacts/links and GET /api/v1/artifacts/{project_id}/{wbs_id} require PMO_API_KEY, PMO_SYNC_WORKER_KEY and PMO_ALLOWED_PROJECTS. The registry stores references and metadata, not external document contents. Current integration is explicit registration, not automatic extraction from Zulip, Nextcloud or Docmost. Per-user RBAC, metadata size limits, URL host allowlisting, schema migration and audit events remain required for production.
