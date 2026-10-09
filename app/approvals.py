@@ -21,6 +21,30 @@ CREATE TABLE IF NOT EXISTS pmo_baselines (
 );
 """
 
+AUDIT_SCHEMA="""
+CREATE TABLE IF NOT EXISTS pmo_baseline_audit (
+ id VARCHAR(36) PRIMARY KEY,
+ baseline_id VARCHAR(36) NOT NULL,
+ action VARCHAR(32) NOT NULL,
+ actor VARCHAR(255) NOT NULL,
+ occurred_at TIMESTAMPTZ NOT NULL
+);
+"""
+def _audit(conn,baseline_id,action,actor):
+    conn.execute(text(AUDIT_SCHEMA))
+    conn.execute(text("""INSERT INTO pmo_baseline_audit(id,baseline_id,action,actor,occurred_at)
+        VALUES (:id,:baseline_id,:action,:actor,:occurred_at)"""),
+        {"id":str(uuid.uuid4()),"baseline_id":baseline_id,"action":action,
+         "actor":actor,"occurred_at":datetime.now(timezone.utc)})
+
+def audit_events(baseline_id):
+    with get_engine().begin() as conn:
+        conn.execute(text(AUDIT_SCHEMA))
+        rows=conn.execute(text("""SELECT action,actor,occurred_at FROM pmo_baseline_audit
+            WHERE baseline_id=:id ORDER BY occurred_at,id"""),{"id":baseline_id}).mappings().all()
+    return [{"action":r["action"],"actor":r["actor"],
+             "occurred_at":r["occurred_at"].isoformat()} for r in rows]
+
 def propose_baseline(project_code,baseline):
     if not project_code or not isinstance(baseline,dict) or not isinstance(baseline.get("tasks"),list):
         raise ValueError("project code and baseline tasks required")
@@ -31,6 +55,7 @@ def propose_baseline(project_code,baseline):
                             VALUES (:id,:code,'STAGED',:created,CAST(:state AS JSONB))"""),
                      {"id":identifier,"code":project_code,"created":datetime.now(timezone.utc),
                       "state":json.dumps(baseline,ensure_ascii=False)})
+        _audit(conn,identifier,"PROPOSED","system")
     return {"baseline_id":identifier,"approval_status":"STAGED"}
 
 def approve_baseline(baseline_id,reviewer):
@@ -42,6 +67,7 @@ def approve_baseline(baseline_id,reviewer):
             approved_at=:now,approved_by=:reviewer WHERE id=:id AND approval_status='STAGED'
             RETURNING id,project_code,approved_by"""),
             {"now":datetime.now(timezone.utc),"reviewer":reviewer.strip(),"id":baseline_id}).mappings().first()
+        if row is not None: _audit(conn,baseline_id,"APPROVED",reviewer.strip())
     if row is None: return None
     return {"baseline_id":row["id"],"project_code":row["project_code"],
             "approval_status":"APPROVED","approved_by":row["approved_by"]}
