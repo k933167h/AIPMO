@@ -69,3 +69,6 @@ POST /api/v1/sync/execute requires PMO_API_KEY, a distinct PMO_SYNC_WORKER_KEY h
 
 ## v3.2 Air-gapped collaboration gateway
 AIPMO -> authenticated Collaboration Probe API -> fixed server-configured Zulip/Nextcloud endpoints. Zulip GET /api/v1/streams returns accessible channels; Nextcloud OCS GET /ocs/v2.php/cloud/capabilities?format=json returns capability metadata. Both use HTTPS, 10-second timeout and reject HTTP redirects. Docmost Community does not expose a supported public REST API: its adapter reports manual-link-only; official REST API needs Enterprise license. Integration is read-only and must be restricted by internal egress firewall and service identities. Offline deployment checklist: deploy/AIRGAP-COLLABORATION.md. No chat sending, document editing, file transfer, unified search or full container stack implemented in this version.
+
+## v3.3 Open-source capability fallback
+AIPMO uses supported official APIs first. When a community edition lacks an API, AIPMO may provide an independent artifact identity and WBS traceability service rather than using undocumented or license-restricted endpoints. app/artifact_registry.py introduces deterministic SHA-256 IDs over project, WBS, artifact kind, source and external ID. This is a pure algorithm only; durable storage, RBAC, UI, full text search and wiki editing are future milestones.
