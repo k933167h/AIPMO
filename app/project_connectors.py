@@ -32,7 +32,7 @@ def read_jira(project_key, base_url=None, email=None, token=None):
         raise ValueError("Jira credentials missing")
     auth = base64.b64encode(f"{email}:{token}".encode()).decode()
     query = urlencode({"jql": f'project = "{project_key}" ORDER BY updated DESC', "maxResults": 100,
-                       "fields": "summary,status,customfield_10016"})
+                       "fields": "summary,status,updated,customfield_10016"})
     payload = _request_json(f"{base}/rest/api/3/search?{query}",
                             {"Authorization": f"Basic {auth}", "Accept": "application/json"})
     if not isinstance(payload, dict) or not isinstance(payload.get("issues"), list):
@@ -72,7 +72,7 @@ def read_jira_pages(project_key, max_pages=3, **kwargs):
     for page in range(max_pages):
         query = urlencode({"jql": f'project = "{project_key}" ORDER BY updated DESC',
                            "startAt": page * 100, "maxResults": 100,
-                           "fields": "summary,status,customfield_10016"})
+                           "fields": "summary,status,updated,customfield_10016"})
         data = _request_json(f"{base}/rest/api/3/search?{query}", headers)
         batch = data.get("issues") if isinstance(data, dict) else None
         if not isinstance(batch, list):
