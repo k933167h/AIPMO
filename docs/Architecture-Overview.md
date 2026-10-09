@@ -15,3 +15,7 @@ CPM supports FS, SS, FF and SF dependencies with signed elapsed-day lag. Legacy 
 
 ## v1.6 Workday calendar projection
 Optional project_start, holidays and working_weekdays add working-date boundaries to integer-unit CPM output. This is a date projection of elapsed-day CPM, not a full working-time constraint solver; noninteger boundaries are rejected. Holidays are supplied by caller.
+
+
+## v1.7 Baseline variance
+Optional approved baseline comparison in /api/v1/schedule/cpm requires project_start. Returns calendar-day start/finish variance, delayed tasks and added/removed tasks. Approval status is supplied by the caller and not independently verified against an approval store.
