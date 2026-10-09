@@ -7,11 +7,11 @@ from app.engine import progress, evm
 from app.schedule import critical_path
 from app.calendar import project_schedule_dates
 from app.baseline import compare_baseline
-from app.approvals import propose_baseline, approve_baseline, load_approved_baseline, audit_events, reject_baseline
+from app.approvals import propose_baseline, approve_baseline, load_approved_baseline, audit_events, audit_integrity, reject_baseline
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.1.0")
+app = FastAPI(title="AI PMO Starter API", version="2.2.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -119,3 +119,8 @@ def reject_staged_baseline(baseline_id:str,data:BaselineRejection,x_api_key:str|
     except ValueError as exc: raise HTTPException(422,str(exc))
     if result is None: raise HTTPException(404,"staged baseline not found")
     return result
+
+@app.get("/api/v1/baselines/{baseline_id}/audit/verify")
+def verify_baseline_audit(baseline_id:str,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return {"baseline_id":baseline_id,**audit_integrity(baseline_id)}
