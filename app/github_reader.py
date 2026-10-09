@@ -35,7 +35,7 @@ def fetch_github_snapshot(repo,token=None,pages=2,timeout=10):
         return items
     issues=collect("issues",{"state":"all"})
     prs=collect("pulls",{"state":"all"})
-    runs=collect("actions/runs",{}) if False else []
+    runs=collect_workflow_runs(root,token,pages,timeout)
     snapshot=project_snapshot(issues,prs,runs)
     snapshot["repository"]=repo
     snapshot["wbs_links"]=map_wbs_links(snapshot)
@@ -48,4 +48,21 @@ def map_wbs_links(snapshot):
             for match in WBS_PATTERN.finditer(item.get("title") or ""):
                 result.append({"wbs_id":match.group(1),"external_id":item["external_id"],
                                "type":item["type"],"url":item.get("url")})
+    return result
+
+def collect_workflow_runs(root,token,pages,timeout):
+    result=[]
+    for page in range(1,pages+1):
+        query=urlencode({"per_page":100,"page":page})
+        request=Request(f"{root}/actions/runs?{query}",headers={
+            "Authorization":f"Bearer {token}","Accept":"application/vnd.github+json",
+            "X-GitHub-Api-Version":"2022-11-28","User-Agent":"AIPMO-read-adapter"})
+        try:
+            with urlopen(request,timeout=timeout) as response: payload=json.load(response)
+        except (HTTPError,URLError,TimeoutError) as exc:
+            raise RuntimeError("GitHub workflow read failed") from exc
+        runs=payload.get("workflow_runs")
+        if not isinstance(runs,list): raise RuntimeError("unexpected workflow response")
+        result.extend(runs)
+        if len(runs)<100: break
     return result
