@@ -9,8 +9,9 @@ from app.calendar import project_schedule_dates
 from app.baseline import compare_baseline
 from app.approvals import propose_baseline, approve_baseline, load_approved_baseline, audit_events, reject_baseline
 from app.identity import resolve_identity
+from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.0.0")
+app = FastAPI(title="AI PMO Starter API", version="2.1.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -93,7 +94,7 @@ def approve_staged_baseline(baseline_id:str,data:BaselineApproval,x_api_key:str|
     approval_key=os.environ.get("PMO_SME_APPROVAL_KEY")
     if not approval_key or not secrets.compare_digest(x_sme_key or "",approval_key):
         raise HTTPException(403,"SME approval credential required")
-    actor=resolve_identity(x_identity_token,"SME")
+    actor=verify_oidc(x_identity_token,"SME") if os.environ.get("PMO_AUTH_MODE")=="oidc" else resolve_identity(x_identity_token,"SME")
     if data.reviewer!=actor: raise HTTPException(403,"reviewer identity mismatch")
     try: result=approve_baseline(baseline_id,actor)
     except ValueError as exc: raise HTTPException(422,str(exc))
