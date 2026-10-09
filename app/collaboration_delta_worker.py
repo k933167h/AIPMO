@@ -1,7 +1,7 @@
 """On-demand delta worker for Zulip with durable checkpoints."""
 from app.collaboration_sync import apply_batch,read_cursor
 from app.collaboration_retry import record,retry
-from app.collaboration_discovery import zulip_recent_messages
+from app.zulip_pagination import fetch_zulip_since
 from app.collaboration_mapping import detect_wbs
 from app.sync_policy import check_project_access
 
@@ -12,7 +12,7 @@ def run_zulip_delta(project,stream_id,limit=100):
     scope=f"stream-{stream_id}"
     previous=read_cursor(project,"zulip",scope)
     try:
-        messages=retry(lambda:zulip_recent_messages(stream_id,limit))
+        messages=retry(lambda:fetch_zulip_since(stream_id,previous,page_size=limit))
         ordered=sorted(messages,key=lambda m:int(m["id"]))
         newer=[m for m in ordered if previous is None or int(m["id"])>int(previous)]
         items=[]
