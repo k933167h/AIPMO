@@ -39,3 +39,6 @@ Set PMO_AUTH_MODE=oidc, PMO_OIDC_ISSUER, PMO_OIDC_AUDIENCE and HTTPS PMO_OIDC_JW
 
 ## v2.2 Approval audit hash chain
 New audit events record SHA-256 event_hash and prev_hash under PostgreSQL transaction-scoped advisory locking. GET /api/v1/baselines/{id}/audit/verify recomputes and validates links. Existing v1.9/v2.0 audit rows are not backfilled; schema migration must be applied for existing databases. Hash chaining alone does not prevent privileged database rewrites, deletions, or truncation; external signed/WORM checkpoints remain future work.
+
+## v2.3 MCP PMO tool governance
+AIPMO exposes a static allowlisted tool catalog and policy **simulation** API. No remote MCP tool is executed. The supplied roles and approval flags are untrusted and cannot be used as real execution authorization. Production enforcement requires verified identity, project scopes, server-side approvals, tool argument validation, per-resource OAuth, tracing and evidence.
