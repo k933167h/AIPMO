@@ -48,3 +48,6 @@ POST /api/v1/integrations/github/snapshot accepts GitHub issue, pull request and
 
 ## v2.5 GitHub REST read adapter and WBS references
 GET /api/v1/integrations/github/{owner}/{repo}/sync fetches Issues, PRs and Actions workflow runs via read-only GitHub REST using PMO_GITHUB_READ_TOKEN. Pagination is bounded (default 2, maximum 5 pages per resource). WBS references are extracted from title tokens WBS-<id> or WBS:<id> and returned as proposed links, not authoritative schedule updates. No remote MCP transport, durable synchronization or automated story point inference yet. Token must be provisioned server-side with minimum read scopes; do not log or return it.
+
+## v2.6 Multi-source WBS reconciliation
+POST /api/v1/wbs/reconcile accepts Jira, Plane, GANTT-AX and GitHub link payloads, groups normalized work items by WBS ID, reports unmatched items and flags duplicate same-source references for review. This is a read-only reconciliation starter; it does not yet call Jira/Plane MCP servers, persist identity mappings or calculate trustworthy cross-tool story points. WBS labels require explicit source governance and SME confirmation before authoritative changes.
