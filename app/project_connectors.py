@@ -81,3 +81,27 @@ def read_jira_pages(project_key, max_pages=3, **kwargs):
         if not batch or len(batch) < 100 or len(issues) >= data.get("total", float("inf")):
             break
     return issues
+
+def read_plane_pages(workspace, project_id, max_pages=3, **kwargs):
+    """Read bounded Plane pages without following untrusted next URLs."""
+    if not 1 <= max_pages <= 5:
+        raise ValueError("max_pages must be 1..5")
+    for value in (workspace, project_id):
+        if not isinstance(value, str) or not value or not all(ch.isalnum() or ch in "-_" for ch in value):
+            raise ValueError("invalid Plane project identifier")
+    base = _base_url(kwargs.get("base_url") or os.environ.get("PMO_PLANE_URL"))
+    token = kwargs.get("token") or os.environ.get("PMO_PLANE_TOKEN")
+    if not token:
+        raise ValueError("Plane credential missing")
+    issues = []
+    for page in range(max_pages):
+        query = urlencode({"per_page": 100, "page": page + 1})
+        url = f"{base}/api/v1/workspaces/{workspace}/projects/{project_id}/issues/?{query}"
+        data = _request_json(url, {"X-API-Key": token, "Accept": "application/json"})
+        batch = data.get("results") if isinstance(data, dict) else data
+        if not isinstance(batch, list):
+            raise ValueError("unexpected Plane response")
+        issues.extend(batch)
+        if not batch or len(batch) < 100:
+            break
+    return issues
