@@ -51,3 +51,6 @@ GET /api/v1/integrations/github/{owner}/{repo}/sync fetches Issues, PRs and Acti
 
 ## v2.6 Multi-source WBS reconciliation
 POST /api/v1/wbs/reconcile accepts Jira, Plane, GANTT-AX and GitHub link payloads, groups normalized work items by WBS ID, reports unmatched items and flags duplicate same-source references for review. This is a read-only reconciliation starter; it does not yet call Jira/Plane MCP servers, persist identity mappings or calculate trustworthy cross-tool story points. WBS labels require explicit source governance and SME confirmation before authoritative changes.
+
+## v2.7 Jira and Plane read adapters
+POST /api/v1/wbs/reconcile/remote reads Jira Cloud issues and Plane issues through HTTPS APIs using server-configured PMO_JIRA_URL, PMO_JIRA_EMAIL, PMO_JIRA_TOKEN, PMO_PLANE_URL and PMO_PLANE_TOKEN, then reconciles with GANTT-AX and GitHub links. API is read-only, has a 10-second request timeout and retrieves up to 100 records per provider (first page only). No actual MCP protocol transport, pagination beyond first page, project-scoped authorization, or production credentialed integration test is implemented. Deploy behind project authorization and least-privilege credentials before operational use.

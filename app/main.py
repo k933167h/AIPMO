@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.6.0")
+app = FastAPI(title="AI PMO Starter API", version="2.7.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -175,3 +175,24 @@ class WBSReconciliationRequest(BaseModel):
 def reconcile_project_wbs(data:WBSReconciliationRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     return reconcile_wbs(data.jira,data.plane,data.ganttax,data.github_links)
+
+from app.project_connectors import read_jira, read_plane, reconcile_external_work
+
+class ExternalWBSRequest(BaseModel):
+    jira_project: str
+    plane_workspace: str
+    plane_project: str
+    ganttax: list[dict[str,Any]] = Field(default_factory=list)
+    github_links: list[dict[str,Any]] = Field(default_factory=list)
+
+@app.post("/api/v1/wbs/reconcile/remote")
+def reconcile_remote_wbs(data:ExternalWBSRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try:
+        jira = read_jira(data.jira_project)
+        plane = read_plane(data.plane_workspace,data.plane_project)
+        return reconcile_external_work(jira,plane,data.ganttax,data.github_links)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except Exception:
+        raise HTTPException(502,"remote project service unavailable")
