@@ -4,8 +4,8 @@ from app.sync_checkpoints import record_sync,read_checkpoint
 
 def test_success_checkpoint_roundtrip(monkeypatch):
     from app import sync_checkpoints as sc
-    from sqlalchemy import create_engine
-    engine=create_engine("postgresql+psycopg://pmo:pmo@localhost:5432/pmo",pool_pre_ping=True)
+    from app.store import get_engine
+    engine=get_engine()
     monkeypatch.setattr(sc,"get_engine",lambda:engine)
     project="checkpoint-test-success"
     stamp=datetime(2026,10,9,tzinfo=timezone.utc)
@@ -15,8 +15,8 @@ def test_success_checkpoint_roundtrip(monkeypatch):
 
 def test_failed_run_does_not_advance(monkeypatch):
     from app import sync_checkpoints as sc
-    from sqlalchemy import create_engine
-    engine=create_engine("postgresql+psycopg://pmo:pmo@localhost:5432/pmo",pool_pre_ping=True)
+    from app.store import get_engine
+    engine=get_engine()
     monkeypatch.setattr(sc,"get_engine",lambda:engine)
     project="checkpoint-test-failure"
     record_sync(project,"plane",datetime(2026,10,10,tzinfo=timezone.utc),0,success=False,error_code="UPSTREAM")
