@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime,timezone
 from sqlalchemy import text
 from app.store import get_engine
+from app.audit_chain import GENESIS,event_hash,verify_events
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS pmo_baselines (
@@ -27,23 +28,39 @@ CREATE TABLE IF NOT EXISTS pmo_baseline_audit (
  baseline_id VARCHAR(36) NOT NULL,
  action VARCHAR(32) NOT NULL,
  actor VARCHAR(255) NOT NULL,
- occurred_at TIMESTAMPTZ NOT NULL
+ occurred_at TIMESTAMPTZ NOT NULL,
+ prev_hash VARCHAR(64),
+ event_hash VARCHAR(64)
 );
 """
 def _audit(conn,baseline_id,action,actor):
     conn.execute(text(AUDIT_SCHEMA))
-    conn.execute(text("""INSERT INTO pmo_baseline_audit(id,baseline_id,action,actor,occurred_at)
-        VALUES (:id,:baseline_id,:action,:actor,:occurred_at)"""),
+    conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:baseline_id))"),
+                 {"baseline_id":baseline_id})
+    previous=conn.execute(text("""SELECT event_hash FROM pmo_baseline_audit
+       WHERE baseline_id=:id ORDER BY occurred_at DESC,id DESC LIMIT 1"""),
+       {"id":baseline_id}).scalar_one_or_none() or GENESIS
+    occurred_at=datetime.now(timezone.utc)
+    timestamp=occurred_at.isoformat()
+    digest=event_hash(baseline_id,action,actor,timestamp,previous)
+    conn.execute(text("""INSERT INTO pmo_baseline_audit
+        (id,baseline_id,action,actor,occurred_at,prev_hash,event_hash)
+        VALUES (:id,:baseline_id,:action,:actor,:occurred_at,:prev_hash,:event_hash)"""),
         {"id":str(uuid.uuid4()),"baseline_id":baseline_id,"action":action,
-         "actor":actor,"occurred_at":datetime.now(timezone.utc)})
+         "actor":actor,"occurred_at":occurred_at,"prev_hash":previous,"event_hash":digest})
 
 def audit_events(baseline_id):
     with get_engine().begin() as conn:
         conn.execute(text(AUDIT_SCHEMA))
-        rows=conn.execute(text("""SELECT action,actor,occurred_at FROM pmo_baseline_audit
-            WHERE baseline_id=:id ORDER BY occurred_at,id"""),{"id":baseline_id}).mappings().all()
+        rows=conn.execute(text("""SELECT action,actor,occurred_at,prev_hash,event_hash
+            FROM pmo_baseline_audit WHERE baseline_id=:id
+            ORDER BY occurred_at,id"""),{"id":baseline_id}).mappings().all()
     return [{"action":r["action"],"actor":r["actor"],
-             "occurred_at":r["occurred_at"].isoformat()} for r in rows]
+             "occurred_at":r["occurred_at"].isoformat(),
+             "prev_hash":r["prev_hash"],"event_hash":r["event_hash"]} for r in rows]
+
+def audit_integrity(baseline_id):
+    return verify_events(baseline_id,audit_events(baseline_id))
 
 def propose_baseline(project_code,baseline):
     if not project_code or not isinstance(baseline,dict) or not isinstance(baseline.get("tasks"),list):

@@ -35,3 +35,7 @@ PMO_IDENTITIES_JSON maps deployment-managed credentials to user_id and roles. SM
 
 ## v2.1 OIDC verification (opt-in)
 Set PMO_AUTH_MODE=oidc, PMO_OIDC_ISSUER, PMO_OIDC_AUDIENCE and HTTPS PMO_OIDC_JWKS_URL to verify RS256 JWT signature, issuer, audience, expiration and SME role on approval/rejection. Legacy static identity mode remains default. JWKS network retrieval requires a reachable issuer; tests currently cover configuration failures only. Append-only audit cryptographic hash chaining and evidence storage remain pending.
+
+
+## v2.2 Approval audit hash chain
+New audit events record SHA-256 event_hash and prev_hash under PostgreSQL transaction-scoped advisory locking. GET /api/v1/baselines/{id}/audit/verify recomputes and validates links. Existing v1.9/v2.0 audit rows are not backfilled; schema migration must be applied for existing databases. Hash chaining alone does not prevent privileged database rewrites, deletions, or truncation; external signed/WORM checkpoints remain future work.
