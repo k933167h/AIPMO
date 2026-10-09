@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.5.0")
+app = FastAPI(title="AI PMO Starter API", version="2.6.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -162,3 +162,16 @@ def sync_github_repository(owner:str,repo:str,x_api_key:str|None=Header(default=
     try: return fetch_github_snapshot(f"{owner}/{repo}")
     except ValueError as exc: raise HTTPException(422,str(exc))
     except RuntimeError as exc: raise HTTPException(502,str(exc))
+
+from app.wbs_reconcile import reconcile_wbs
+
+class WBSReconciliationRequest(BaseModel):
+    jira: list[dict[str,Any]] = Field(default_factory=list)
+    plane: list[dict[str,Any]] = Field(default_factory=list)
+    ganttax: list[dict[str,Any]] = Field(default_factory=list)
+    github_links: list[dict[str,Any]] = Field(default_factory=list)
+
+@app.post("/api/v1/wbs/reconcile")
+def reconcile_project_wbs(data:WBSReconciliationRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return reconcile_wbs(data.jira,data.plane,data.ganttax,data.github_links)
