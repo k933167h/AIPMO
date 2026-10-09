@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.8.0")
+app = FastAPI(title="AI PMO Starter API", version="2.9.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -215,6 +215,32 @@ def reconcile_paged_wbs(data:PagedWBSRequest,x_api_key:str|None=Header(default=N
         result=reconcile_external_work(remote["jira"],remote["plane"],data.ganttax,data.github_links)
         result["source_counts"]={"jira":remote["jira_count"],"plane":remote["plane_count"]}
         return result
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except Exception:
+        raise HTTPException(502,"remote project service unavailable")
+
+from app.sync_policy import check_project_access, changed_since
+
+class DeltaWBSRequest(BaseModel):
+    jira_project: str
+    plane_workspace: str
+    plane_project: str
+    max_pages: int = Field(default=3,ge=1,le=5)
+    updated_since: str | None = None
+
+@app.post("/api/v1/wbs/changes")
+def read_wbs_changes(data:DeltaWBSRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try:
+        check_project_access(data.jira_project)
+        check_project_access(data.plane_project)
+        remote=read_project_pages(data.jira_project,data.plane_workspace,data.plane_project,data.max_pages)
+        jira=changed_since([dict(issue,updated=(issue.get("fields") or {}).get("updated")) for issue in remote["jira"]],data.updated_since)
+        plane=changed_since(remote["plane"],data.updated_since)
+        return {"jira":jira,"plane":plane,"bounded":True}
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
     except ValueError as exc:
         raise HTTPException(422,str(exc))
     except Exception:
