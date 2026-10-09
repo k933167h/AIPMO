@@ -35,4 +35,4 @@ def changed_since(records, watermark=None, updated_key="updated"):
         if since is None or changed > since:
             result.append(record)
     return {"changed": result, "missing_timestamp": missing,
-            "next_watermark": max((r[updated_key] for r in result), default=watermark)}
+            "next_watermark": max((r[updated_key] for r in result), key=_parse_time, default=watermark)}
