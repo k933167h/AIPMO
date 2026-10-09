@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.1.0")
+app = FastAPI(title="AI PMO Starter API", version="3.2.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -304,3 +304,29 @@ def execute_project_sync(data:WorkerSyncRequest,x_api_key:str|None=Header(defaul
         raise HTTPException(422,str(exc))
     except Exception:
         raise HTTPException(502,"sync execution failed")
+
+from app.collaboration import zulip_channels,nextcloud_capabilities,docmost_integration_status
+
+@app.get("/api/v1/collaboration/{provider}/probe")
+def probe_collaboration(provider:str,x_api_key:str|None=Header(default=None),
+                        x_worker_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    expected=os.getenv("PMO_SYNC_WORKER_KEY")
+    if not expected or not x_worker_key or not secrets.compare_digest(expected,x_worker_key):
+        raise HTTPException(403,"integration worker authorization required")
+    try:
+        if provider=="zulip":
+            channels=zulip_channels()
+            return {"provider":provider,"channel_count":len(channels),"channels":channels}
+        if provider=="nextcloud":
+            capabilities=nextcloud_capabilities()
+            return {"provider":provider,"capability_keys":sorted(capabilities)}
+        if provider=="docmost":
+            return {"provider":provider,**docmost_integration_status()}
+        raise HTTPException(404,"unknown collaboration provider")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502,"collaboration service unavailable")
