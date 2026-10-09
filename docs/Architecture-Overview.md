@@ -31,3 +31,7 @@ Approval endpoint now requires PMO_SME_APPROVAL_KEY via x-sme-key in addition to
 
 ## v2.0 Identity-bound SME approval
 PMO_IDENTITIES_JSON maps deployment-managed credentials to user_id and roles. SME approval and rejection require both shared SME key and x-identity-token for a user with SME role. Approval reviewer must match authenticated user_id. REJECTED is terminal and recorded in audit. Identity mapping is static deployment configuration, not enterprise SSO/OIDC; rejection reason is returned but not yet durably recorded in audit.
+
+
+## v2.1 OIDC verification (opt-in)
+Set PMO_AUTH_MODE=oidc, PMO_OIDC_ISSUER, PMO_OIDC_AUDIENCE and HTTPS PMO_OIDC_JWKS_URL to verify RS256 JWT signature, issuer, audience, expiration and SME role on approval/rejection. Legacy static identity mode remains default. JWKS network retrieval requires a reachable issuer; tests currently cover configuration failures only. Append-only audit cryptographic hash chaining and evidence storage remain pending.
