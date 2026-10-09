@@ -23,3 +23,7 @@ Optional approved baseline comparison in /api/v1/schedule/cpm requires project_s
 
 ## v1.8 baseline approval
 PostgreSQL stores baseline proposals as STAGED JSONB records. A separate endpoint transitions them to APPROVED once. CPM can load an approved baseline by baseline_id. Reviewer identity is currently caller-supplied and not independently authenticated; tenant RBAC and immutable audit history remain future work.
+
+
+## v1.9 SME approval credential and audit
+Approval endpoint now requires PMO_SME_APPROVAL_KEY via x-sme-key in addition to PMO_API_KEY. PostgreSQL stores PROPOSED and APPROVED audit events in the same transaction as baseline changes. GET /api/v1/baselines/{id}/audit returns events. This is a shared-role secret, not user-specific RBAC, immutable/WORM storage, or independently authenticated reviewer identity; these remain production requirements.
