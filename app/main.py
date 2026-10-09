@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.7.0")
+app = FastAPI(title="AI PMO Starter API", version="3.8.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -444,6 +444,7 @@ def collaboration_cursor(project_id:str,provider:str,scope:str,
         raise HTTPException(403,"project not authorized")
 
 from app.collaboration_delta_worker import run_zulip_delta
+from app.collaboration_lock import run_exclusive
 
 class ZulipDeltaRequest(BaseModel):
     project_id: str = Field(min_length=1)
@@ -456,7 +457,7 @@ def execute_zulip_delta(data:ZulipDeltaRequest,
                         x_worker_key:str|None=Header(default=None)):
     _artifact_worker_auth(x_api_key,x_worker_key)
     try:
-        return run_zulip_delta(data.project_id,data.stream_id,data.limit)
+        return run_exclusive(data.project_id,"zulip",f"stream-{data.stream_id}",lambda:run_zulip_delta(data.project_id,data.stream_id,data.limit))
     except PermissionError:
         raise HTTPException(403,"project not authorized")
     except ValueError as exc:
