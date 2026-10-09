@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.3.0")
+app = FastAPI(title="AI PMO Starter API", version="2.4.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -141,3 +141,15 @@ class MCPAuthorizationRequest(BaseModel):
 def check_mcp_policy(data:MCPAuthorizationRequest,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     return authorize_tool(data.tool_name,data.roles,data.approved)
+
+from app.github_sync import project_snapshot
+
+class GitHubSnapshotRequest(BaseModel):
+    issues: list[dict[str,Any]] = Field(default_factory=list)
+    pull_requests: list[dict[str,Any]] = Field(default_factory=list)
+    workflow_runs: list[dict[str,Any]] = Field(default_factory=list)
+
+@app.post("/api/v1/integrations/github/snapshot")
+def normalize_github_snapshot(data:GitHubSnapshotRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return project_snapshot(data.issues,data.pull_requests,data.workflow_runs)

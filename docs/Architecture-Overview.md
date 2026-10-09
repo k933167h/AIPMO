@@ -42,3 +42,6 @@ New audit events record SHA-256 event_hash and prev_hash under PostgreSQL transa
 
 ## v2.3 MCP PMO tool governance
 AIPMO exposes a static allowlisted tool catalog and policy **simulation** API. No remote MCP tool is executed. The supplied roles and approval flags are untrusted and cannot be used as real execution authorization. Production enforcement requires verified identity, project scopes, server-side approvals, tool argument validation, per-resource OAuth, tracing and evidence.
+
+## v2.4 GitHub snapshot normalization
+POST /api/v1/integrations/github/snapshot accepts GitHub issue, pull request and workflow run data and normalizes it for PMO reporting. This endpoint does not retrieve remote data or execute MCP tools. Future work: authenticated GitHub read connector, paging, rate limits, evidence, WBS mapping.
