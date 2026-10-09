@@ -10,7 +10,7 @@ def zulip_recent_messages(stream_id,limit=100):
         raise ValueError("invalid Zulip request")
     base=_base(os.getenv("PMO_ZULIP_URL"))
     headers={"Authorization":_basic(os.getenv("PMO_ZULIP_EMAIL"),os.getenv("PMO_ZULIP_API_KEY"))}
-    path="/api/v1/messages?anchor=newest&num_before="+str(limit)+"&num_after=0"
+    path="/api/v1/messages?anchor=newest&num_before="+str(limit)+"&num_after=0&narrow="+quote(__import__("json").dumps([{"operator":"stream","operand":stream_id}]),safe="")
     result=_json_get(base,path,headers)
     if result.get("result")!="success": raise ValueError("invalid Zulip response")
     return [m for m in result.get("messages",[]) if m.get("stream_id")==stream_id]
