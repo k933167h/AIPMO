@@ -8,7 +8,7 @@ from urllib.error import HTTPError,URLError
 from app.github_sync import project_snapshot
 
 REPO_PATTERN=re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-WBS_PATTERN=re.compile(r"\\bWBS[-_: ]([A-Za-z0-9][A-Za-z0-9._-]{0,63})\\b",re.I)
+WBS_PATTERN=re.compile(r"\bWBS[-_: ]([A-Za-z0-9][A-Za-z0-9._-]{0,63})\b",re.I)
 
 def fetch_github_snapshot(repo,token=None,pages=2,timeout=10):
     if not REPO_PATTERN.fullmatch(repo): raise ValueError("invalid repository")
