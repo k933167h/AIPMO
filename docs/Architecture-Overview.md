@@ -45,3 +45,6 @@ AIPMO exposes a static allowlisted tool catalog and policy **simulation** API. N
 
 ## v2.4 GitHub snapshot normalization
 POST /api/v1/integrations/github/snapshot accepts GitHub issue, pull request and workflow run data and normalizes it for PMO reporting. This endpoint does not retrieve remote data or execute MCP tools. Future work: authenticated GitHub read connector, paging, rate limits, evidence, WBS mapping.
+
+## v2.5 GitHub REST read adapter and WBS references
+GET /api/v1/integrations/github/{owner}/{repo}/sync fetches Issues, PRs and Actions workflow runs via read-only GitHub REST using PMO_GITHUB_READ_TOKEN. Pagination is bounded (default 2, maximum 5 pages per resource). WBS references are extracted from title tokens WBS-<id> or WBS:<id> and returned as proposed links, not authoritative schedule updates. No remote MCP transport, durable synchronization or automated story point inference yet. Token must be provisioned server-side with minimum read scopes; do not log or return it.
