@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.2.0")
+app = FastAPI(title="AI PMO Starter API", version="2.3.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -124,3 +124,20 @@ def reject_staged_baseline(baseline_id:str,data:BaselineRejection,x_api_key:str|
 def verify_baseline_audit(baseline_id:str,x_api_key:str|None=Header(default=None)):
     require_key(x_api_key)
     return {"baseline_id":baseline_id,**audit_integrity(baseline_id)}
+
+from app.mcp_governance import CATALOG,authorize_tool
+
+@app.get("/api/v1/mcp/tools")
+def list_mcp_tools(x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return {"tools":[policy.model_dump() for policy in CATALOG.values()]}
+
+class MCPAuthorizationRequest(BaseModel):
+    tool_name: str
+    roles: list[str] = Field(default_factory=list)
+    approved: bool = False
+
+@app.post("/api/v1/mcp/policy/check")
+def check_mcp_policy(data:MCPAuthorizationRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return authorize_tool(data.tool_name,data.roles,data.approved)
