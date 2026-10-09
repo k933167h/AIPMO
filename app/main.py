@@ -12,7 +12,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="3.5.0")
+app = FastAPI(title="AI PMO Starter API", version="3.6.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -402,3 +402,43 @@ def run_collaboration_ingest(data:CollaborationIngestRequest,
         raise
     except Exception:
         raise HTTPException(502,"collaboration ingestion failed")
+
+from app.collaboration_sync import apply_batch,read_cursor
+
+class SyncArtifactItem(BaseModel):
+    wbs_id: str = Field(min_length=1)
+    kind: str
+    external_id: str = Field(min_length=1)
+    metadata: dict[str,Any] = Field(default_factory=dict)
+
+class CollaborationBatchRequest(BaseModel):
+    project_id: str = Field(min_length=1)
+    provider: str
+    scope: str = Field(min_length=1)
+    cursor: str | None = None
+    items: list[SyncArtifactItem] = Field(max_length=500)
+
+@app.post("/api/v1/collaboration/sync/batch")
+def commit_collaboration_batch(data:CollaborationBatchRequest,
+                                x_api_key:str|None=Header(default=None),
+                                x_worker_key:str|None=Header(default=None)):
+    _artifact_worker_auth(x_api_key,x_worker_key)
+    try:
+        check_project_access(data.project_id)
+        return apply_batch(data.project_id,data.provider,data.scope,
+                           [item.model_dump() for item in data.items],data.cursor)
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+
+@app.get("/api/v1/collaboration/sync/cursor")
+def collaboration_cursor(project_id:str,provider:str,scope:str,
+                         x_api_key:str|None=Header(default=None),
+                         x_worker_key:str|None=Header(default=None)):
+    _artifact_worker_auth(x_api_key,x_worker_key)
+    try:
+        check_project_access(project_id)
+        return {"cursor":read_cursor(project_id,provider,scope)}
+    except PermissionError:
+        raise HTTPException(403,"project not authorized")
