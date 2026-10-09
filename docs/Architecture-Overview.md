@@ -57,3 +57,6 @@ POST /api/v1/wbs/reconcile/remote reads Jira Cloud issues and Plane issues throu
 
 ## v2.8 Bounded pagination
 POST /api/v1/wbs/reconcile/paged retrieves up to five pages of 100 Jira and Plane issues each, then reconciles against supplied GANTT-AX/GitHub WBS references. The max_pages parameter defaults to 3. Jira uses startAt and total; Plane uses page/per_page. This is bounded bulk reading, NOT incremental synchronization: cursor/watermark persistence, rate-limit retry, multi-tenant authorization and complete provider-specific pagination validation are future work.
+
+## v2.9 Project scope and delta-filtering foundation
+POST /api/v1/wbs/changes requires PMO_API_KEY and checks both Jira project key and Plane project ID against PMO_ALLOWED_PROJECTS (comma-separated, fail closed). It retrieves bounded pages and filters returned records by updated timestamp, reporting missing timestamps separately. This is client-side delta filtering, not provider-side incremental fetching or persistent checkpointing. It cannot guarantee a complete change feed, particularly when changed items exceed page limits. Multi-tenant identity authorization and external credentialed tests remain pending.
