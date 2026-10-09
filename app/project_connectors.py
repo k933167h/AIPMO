@@ -38,3 +38,18 @@ def read_jira(project_key, base_url=None, email=None, token=None):
     if not isinstance(payload, dict) or not isinstance(payload.get("issues"), list):
         raise ValueError("unexpected Jira response")
     return payload["issues"]
+
+def read_plane(workspace, project_id, base_url=None, token=None):
+    for value in (workspace, project_id):
+        if not isinstance(value, str) or not value or not all(ch.isalnum() or ch in "-_" for ch in value):
+            raise ValueError("invalid Plane project identifier")
+    base = _base_url(base_url or os.environ.get("PMO_PLANE_URL"))
+    token = token or os.environ.get("PMO_PLANE_TOKEN")
+    if not token:
+        raise ValueError("Plane credential missing")
+    url = f"{base}/api/v1/workspaces/{workspace}/projects/{project_id}/issues/?{urlencode({'per_page': 100})}"
+    payload = _request_json(url, {"X-API-Key": token, "Accept": "application/json"})
+    issues = payload.get("results") if isinstance(payload, dict) else payload
+    if not isinstance(issues, list):
+        raise ValueError("unexpected Plane response")
+    return issues
