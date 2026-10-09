@@ -3,6 +3,7 @@ from app.collaboration_sync import apply_batch,read_cursor
 from app.collaboration_retry import record,retry
 from app.zulip_pagination import fetch_zulip_since
 from app.collaboration_mapping import detect_wbs
+from app.collaboration_stream import commit_message_chunks
 from app.sync_policy import check_project_access
 
 def run_zulip_delta(project,stream_id,limit=100):
@@ -15,12 +16,8 @@ def run_zulip_delta(project,stream_id,limit=100):
         messages=retry(lambda:fetch_zulip_since(stream_id,previous,page_size=limit))
         ordered=sorted(messages,key=lambda m:int(m["id"]))
         newer=[m for m in ordered if previous is None or int(m["id"])>int(previous)]
-        items=[]
-        for message in newer:
-            for wbs in detect_wbs(str(message.get("subject") or "")):
-                items.append({"wbs_id":wbs,"kind":"message","external_id":str(message["id"])})
-        cursor=str(newer[-1]["id"]) if newer else previous
-        result=apply_batch(project,"zulip",scope,items,cursor)
+        chunk_messages=[{"id":m["id"],"wbs_ids":detect_wbs(str(m.get("subject") or ""))} for m in newer]
+        result=commit_message_chunks(project,scope,chunk_messages) if chunk_messages else {"registered":0,"cursor":previous}
         record(project,"zulip",scope,"success",result["registered"])
         return result
     except Exception:

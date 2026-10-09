@@ -29,5 +29,5 @@ def nextcloud_list_folder(folder=""):
     results=[]
     for item in root.findall("d:response",ns):
         href=item.findtext("d:href",default="",namespaces=ns)
-        if href: results.append({"href":href})
+        if href: results.append({"href":href,"etag":item.findtext(".//d:getetag",default="",namespaces=ns)})
     return results
