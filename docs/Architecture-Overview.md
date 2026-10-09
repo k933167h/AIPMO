@@ -54,3 +54,6 @@ POST /api/v1/wbs/reconcile accepts Jira, Plane, GANTT-AX and GitHub link payload
 
 ## v2.7 Jira and Plane read adapters
 POST /api/v1/wbs/reconcile/remote reads Jira Cloud issues and Plane issues through HTTPS APIs using server-configured PMO_JIRA_URL, PMO_JIRA_EMAIL, PMO_JIRA_TOKEN, PMO_PLANE_URL and PMO_PLANE_TOKEN, then reconciles with GANTT-AX and GitHub links. API is read-only, has a 10-second request timeout and retrieves up to 100 records per provider (first page only). No actual MCP protocol transport, pagination beyond first page, project-scoped authorization, or production credentialed integration test is implemented. Deploy behind project authorization and least-privilege credentials before operational use.
+
+## v2.8 Bounded pagination
+POST /api/v1/wbs/reconcile/paged retrieves up to five pages of 100 Jira and Plane issues each, then reconciles against supplied GANTT-AX/GitHub WBS references. The max_pages parameter defaults to 3. Jira uses startAt and total; Plane uses page/per_page. This is bounded bulk reading, NOT incremental synchronization: cursor/watermark persistence, rate-limit retry, multi-tenant authorization and complete provider-specific pagination validation are future work.

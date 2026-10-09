@@ -11,7 +11,7 @@ from app.approvals import propose_baseline, approve_baseline, load_approved_base
 from app.identity import resolve_identity
 from app.oidc import verify_oidc
 
-app = FastAPI(title="AI PMO Starter API", version="2.7.0")
+app = FastAPI(title="AI PMO Starter API", version="2.8.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -192,6 +192,29 @@ def reconcile_remote_wbs(data:ExternalWBSRequest,x_api_key:str|None=Header(defau
         jira = read_jira(data.jira_project)
         plane = read_plane(data.plane_workspace,data.plane_project)
         return reconcile_external_work(jira,plane,data.ganttax,data.github_links)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc))
+    except Exception:
+        raise HTTPException(502,"remote project service unavailable")
+
+from app.project_connectors import read_project_pages
+
+class PagedWBSRequest(BaseModel):
+    jira_project: str
+    plane_workspace: str
+    plane_project: str
+    max_pages: int = Field(default=3,ge=1,le=5)
+    ganttax: list[dict[str,Any]] = Field(default_factory=list)
+    github_links: list[dict[str,Any]] = Field(default_factory=list)
+
+@app.post("/api/v1/wbs/reconcile/paged")
+def reconcile_paged_wbs(data:PagedWBSRequest,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    try:
+        remote=read_project_pages(data.jira_project,data.plane_workspace,data.plane_project,data.max_pages)
+        result=reconcile_external_work(remote["jira"],remote["plane"],data.ganttax,data.github_links)
+        result["source_counts"]={"jira":remote["jira_count"],"plane":remote["plane_count"]}
+        return result
     except ValueError as exc:
         raise HTTPException(422,str(exc))
     except Exception:
