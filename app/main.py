@@ -1,4 +1,5 @@
 import os
+import secrets
 from typing import Any
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -6,9 +7,9 @@ from app.engine import progress, evm
 from app.schedule import critical_path
 from app.calendar import project_schedule_dates
 from app.baseline import compare_baseline
-from app.approvals import propose_baseline, approve_baseline, load_approved_baseline
+from app.approvals import propose_baseline, approve_baseline, load_approved_baseline, audit_events
 
-app = FastAPI(title="AI PMO Starter API", version="1.8.0")
+app = FastAPI(title="AI PMO Starter API", version="1.9.0")
 class Task(BaseModel):
     weight: float = Field(gt=0)
     completion: float = Field(ge=0, le=1)
@@ -86,9 +87,17 @@ def create_baseline(data:BaselineProposal,x_api_key:str|None=Header(default=None
     try: return propose_baseline(data.project_code,data.baseline)
     except ValueError as exc: raise HTTPException(422,str(exc))
 @app.post("/api/v1/baselines/{baseline_id}/approve")
-def approve_staged_baseline(baseline_id:str,data:BaselineApproval,x_api_key:str|None=Header(default=None)):
+def approve_staged_baseline(baseline_id:str,data:BaselineApproval,x_api_key:str|None=Header(default=None),x_sme_key:str|None=Header(default=None)):
     require_key(x_api_key)
+    approval_key=os.environ.get("PMO_SME_APPROVAL_KEY")
+    if not approval_key or not secrets.compare_digest(x_sme_key or "",approval_key):
+        raise HTTPException(403,"SME approval credential required")
     try: result=approve_baseline(baseline_id,data.reviewer)
     except ValueError as exc: raise HTTPException(422,str(exc))
     if result is None: raise HTTPException(404,"staged baseline not found")
     return result
+
+@app.get("/api/v1/baselines/{baseline_id}/audit")
+def baseline_audit(baseline_id:str,x_api_key:str|None=Header(default=None)):
+    require_key(x_api_key)
+    return {"baseline_id":baseline_id,"events":audit_events(baseline_id)}
