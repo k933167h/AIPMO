@@ -464,3 +464,7 @@ def execute_zulip_delta(data:ZulipDeltaRequest,
         raise HTTPException(422,str(exc))
     except Exception:
         raise HTTPException(502,"delta sync failed")
+
+# CDPF customer dissatisfaction early warning routes
+from app.cdpf.router import router as cdpf_router
+app.include_router(cdpf_router)
