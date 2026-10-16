@@ -20,3 +20,19 @@ def normalize_events(body:IngestRequest,x_api_key:str|None=Header(default=None))
     require_auth(x_api_key)
     try: return {"project_id":body.project_id,"signals":[s.model_dump(mode="json") for s in normalize(body.source,body.records)]}
     except (ValueError,TypeError,KeyError) as exc: raise HTTPException(422,str(exc)) from exc
+
+@router.post("/ingest")
+def ingest_events(body:IngestRequest,x_api_key:str|None=Header(default=None)):
+    require_auth(x_api_key)
+    from .persistence import persist
+    try:
+        signals=normalize(body.source,body.records)
+        return persist(body.project_id,signals)
+    except (ValueError,TypeError,KeyError) as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+@router.get("/projects/{project_id}/risk")
+def get_project_risk(project_id:str,x_api_key:str|None=Header(default=None)):
+    require_auth(x_api_key)
+    from .persistence import project_risk
+    return project_risk(project_id)
