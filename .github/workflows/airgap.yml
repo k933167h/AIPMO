@@ -1,0 +1,19 @@
+name: airgap
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  airgap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 번들 생성(wheel+소스+SBOM+lock, 시험 포함)
+        run: python airgap/airgap.py bundle --with-tests
+      - name: 번들 무결성 검증(SHA256SUMS)
+        run: python airgap/airgap.py verify "$(ls -d dist/*/)"
+      - name: 오프라인 설치·시험·기동(--no-index --require-hashes)
+        run: python airgap/airgap.py selftest "$(ls -d dist/*/)"

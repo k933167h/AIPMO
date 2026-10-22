@@ -16,7 +16,9 @@ def fetch_github_snapshot(repo,token=None,pages=2,timeout=10):
     token=token or os.environ.get("PMO_GITHUB_READ_TOKEN")
     if not token: raise ValueError("PMO_GITHUB_READ_TOKEN required")
     owner,name=repo.split("/")
-    root=f"https://api.github.com/repos/{owner}/{name}"
+    # 폐쇄망: 사내 GitHub Enterprise Server API를 PMO_GITHUB_API_URL로 지정(예: https://ghes.internal/api/v3). 미설정 시 공개 GitHub.
+    api_base=(os.environ.get("PMO_GITHUB_API_URL") or "https://api.github.com").rstrip("/")
+    root=f"{api_base}/repos/{owner}/{name}"
     def collect(path,params):
         items=[]
         for page in range(1,pages+1):

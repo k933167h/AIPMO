@@ -1,0 +1,101 @@
+{
+ "name": "aipmo",
+ "python": "3.12",
+ "requirements": [
+  "requirements.txt"
+ ],
+ "exclude_runtime": [
+  "pytest"
+ ],
+ "test_requirements": [
+  "requirements.txt"
+ ],
+ "extra_packages": [
+  "sqlalchemy>=2,<3"
+ ],
+ "tests": [
+  {
+   "name": "pytest(DB 비의존)",
+   "cmd": [
+    "{python}",
+    "-m",
+    "pytest",
+    "-q",
+    "--ignore",
+    "tests/test_approval_audit.py",
+    "--ignore",
+    "tests/test_approvals.py",
+    "--ignore",
+    "tests/test_artifact_store.py",
+    "--ignore",
+    "tests/test_collaboration_sync.py",
+    "--ignore",
+    "tests/test_postgres_integration.py",
+    "--ignore",
+    "tests/test_rbac.py",
+    "--ignore",
+    "tests/test_sync_checkpoints.py"
+   ]
+  }
+ ],
+ "smoke": [
+  {
+   "name": "api /health",
+   "cmd": [
+    "{python}",
+    "-m",
+    "uvicorn",
+    "app.main:app",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "18000"
+   ],
+   "url": "http://127.0.0.1:18000/health",
+   "timeout": 30
+  }
+ ],
+ "selftest_env": {
+  "DATABASE_URL": "sqlite+pysqlite:////tmp/aipmo-selftest.db"
+ },
+ "images": [
+  {
+   "name": "aipmo-api",
+   "dockerfile": "Dockerfile",
+   "context": "."
+  }
+ ],
+ "external_images": [
+  "postgres:16-alpine"
+ ],
+ "url_env": [
+  "DATABASE_URL",
+  "PMO_GITHUB_API_URL",
+  "PMO_DOCMOST_URL",
+  "PMO_JIRA_URL",
+  "PMO_NEXTCLOUD_URL",
+  "PMO_OIDC_ISSUER",
+  "PMO_OIDC_JWKS_URL",
+  "PMO_PLANE_URL",
+  "PMO_ZULIP_URL"
+ ],
+ "secret_env": [
+  {
+   "name": "PMO_API_KEY",
+   "min_length": 24
+  },
+  {
+   "name": "PMO_SME_APPROVAL_KEY",
+   "min_length": 24
+  }
+ ],
+ "license_deny": [
+  "AGPL",
+  "SSPL",
+  "BUSL",
+  "Elastic License",
+  "Commons Clause"
+ ],
+ "allowed_hosts": [],
+ "notes": "운영 DB는 PostgreSQL(postgres:16-alpine). 자체시험만 SQLite로 한다. GitHub 연동은 사내 GitHub Enterprise Server API(https://<ghes>/api/v3)를 가리키게 하고, 외부 GitHub.com(api.github.com)은 쓰지 않는다. PostgreSQL 고유 기능(JSONB·hashtext)을 쓰는 시험 7개는 오프라인 SQLite 자체시험에서 제외했고, 번들 postgres:16-alpine로 compose 기동 후 전체 시험을 돌린다."
+}
